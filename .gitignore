@@ -1,0 +1,2 @@
+log/*
+redis-lock*.gem
