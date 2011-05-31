@@ -1,2 +1,3 @@
 log/*
 redis-lock*.gem
+Gemfile.lock

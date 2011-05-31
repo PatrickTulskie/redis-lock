@@ -1,5 +1,7 @@
-require File.dirname(__FILE__) + '/../lib/redis/lock'
+require "redis"
 
 class Redis
+  autoload :Lock, "redis-lock/lock"
+
   include Redis::Lock
 end
