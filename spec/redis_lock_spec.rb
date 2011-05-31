@@ -42,33 +42,35 @@ end
 describe RedisLock, "#unlock" do
   let(:locking_key) { "redis-lock-locking-key" }
   let(:redis)       { Redis.new }
-  let(:redis_lock)  { RedisLock.new(redis, locking_key) }
+
+  let(:unlocked)    { RedisLock.new(redis, locking_key) }
+  let(:locked) do
+    unlocked.tap do |lock|
+      lock.lock
+    end
+  end
 
   before { redis.flushdb }
 
   context "when locked" do
-    subject do
-      redis_lock.tap do |lock|
-        lock.lock
-      end
-    end
+    subject { locked }
 
-    it "returns true" do
-      subject.unlock.should == true
+    it "knows it is not locked" do
+      subject.unlock
       subject.should_not be_locked
     end
 
-    it "returns false if key isn't present" do
+    it "raises an exception if it can't unlock correctly" do
       redis.del(subject.key)
-      subject.unlock.should == false
+      expect { subject.unlock }.to raise_error(RedisLock::UnlockFailure, "Unable to unlock key: #{locking_key}")
     end
   end
 
   context "when not locked" do
-    subject { redis_lock }
+    subject { unlocked }
 
-    it "returns false if the key is not locked" do
-      subject.unlock.should == false
+    it "knows it is not locked" do
+      subject.unlock
       subject.should_not be_locked
     end
   end
@@ -111,6 +113,19 @@ describe RedisLock, "#lock_for_update" do
       end.to raise_error(RuntimeError, "something went wrong!")
 
       subject.should_not be_locked
+    end
+
+    it "runs the block but raises if unlocking failed" do
+      result = "changes within lock"
+
+      expect do
+        subject.lock_for_update do
+          redis.del(subject.key)
+          result = "changed!"
+        end
+      end.to raise_error(RedisLock::UnlockFailure)
+
+      result.should == "changed!"
     end
   end
 

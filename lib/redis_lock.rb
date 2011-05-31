@@ -1,5 +1,6 @@
 class RedisLock
   class LockNotAcquired < Exception; end
+  class UnlockFailure   < Exception; end
 
   def initialize(redis, key)
     @key             = key
@@ -36,13 +37,12 @@ class RedisLock
   end
 
   def unlock
-    return false unless locked?
+    return unless locked?
 
     if successfully_unlocked_key?
       @locked = false
-      true
     else
-      false
+      raise UnlockFailure, "Unable to unlock key: #{@key}"
     end
   end
 
