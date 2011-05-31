@@ -68,7 +68,7 @@ can call lock and unlock explicitly.
 
       def break_the_lock
         begin
-          locker.lock
+          locker.unlock
         rescue RedisLock::UnlockFailure
         end
       end
