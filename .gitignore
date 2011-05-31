@@ -1,3 +1,4 @@
 log/*
 redis_lock*.gem
 Gemfile.lock
+coverage/*
