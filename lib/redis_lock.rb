@@ -1,4 +1,6 @@
 class RedisLock
+  class LockNotAcquired < Exception; end
+
   def initialize(redis, key)
     @key             = key
     @redis           = redis
@@ -12,7 +14,7 @@ class RedisLock
   end
 
   def lock
-    return false if reached_attempted_limit?
+    ensure_attempted_limit_not_exceeded!
 
     if successfully_locked_key?
       @locked = true
@@ -69,5 +71,11 @@ class RedisLock
 
   def successfully_unlocked_key?
     @redis.del(key) == 1
+  end
+
+  def ensure_attempted_limit_not_exceeded!
+    if reached_attempted_limit?
+      raise LockNotAcquired, "Unable to acquire lock for key: #{@key}"
+    end
   end
 end

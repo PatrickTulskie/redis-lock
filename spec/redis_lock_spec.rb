@@ -8,14 +8,18 @@ describe RedisLock, "#lock" do
 
   before { redis.flushdb }
 
-  it "returns true when it has locked successfully" do
+  it "locks when a lock can be acquired" do
     subject.should_not be_locked
-    subject.lock.should be_true
+    subject.lock
+    subject.should be_locked
   end
 
-  it "returns false if the key has already been locked" do
+  it "raises an exception if the lock cannot be acquired" do
     subject.lock
-    subject.lock.should be_false
+    expect do
+      subject.lock
+    end.to raise_error(RedisLock::LockNotAcquired,
+                       "Unable to acquire lock for key: #{locking_key}")
   end
 
   it "retries a set number of times" do
@@ -26,7 +30,9 @@ describe RedisLock, "#lock" do
 
     redis_stub.then.returns(true)
 
-    subject.retry(5.times).lock.should be_true
+    expect do
+      subject.retry(5.times).lock
+    end.to_not raise_error(RedisLock::LockNotAcquired)
 
     redis.should have_received(:setnx).times(5)
     subject.should be_locked
@@ -37,6 +43,7 @@ describe RedisLock, "#unlock" do
   let(:locking_key) { "redis-lock-locking-key" }
   let(:redis)       { Redis.new }
   let(:redis_lock)  { RedisLock.new(redis, locking_key) }
+
   before { redis.flushdb }
 
   context "when locked" do
@@ -113,15 +120,18 @@ describe RedisLock, "#lock_for_update" do
     it "does not run the block" do
       result = "doesn't change within lock"
 
-      subject.lock_for_update do
-        result = "changed!"
-      end
+      expect do
+        subject.lock_for_update do
+          result = "changed!"
+        end
+      end.to raise_error(RedisLock::LockNotAcquired)
 
       result.should == "doesn't change within lock"
     end
 
     it "remains locked" do
-      subject.lock_for_update { }
+      expect { subject.lock_for_update { } }.to raise_error(RedisLock::LockNotAcquired)
+
       subject.should be_locked
     end
   end
