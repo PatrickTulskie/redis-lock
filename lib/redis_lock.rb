@@ -19,6 +19,7 @@ class RedisLock
 
     if successfully_locked_key?
       @locked = true
+      @failed_attempts = 0
     else
       increment_attempts
       sleep 0.2

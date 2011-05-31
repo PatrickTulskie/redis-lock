@@ -17,7 +17,6 @@ describe RedisLock do
       subject.lock
       subject.should be_locked
     end
-
   end
 
   context "#lock when locked" do
@@ -44,6 +43,27 @@ describe RedisLock do
 
       redis.should have_received(:setnx).times(5)
       subject.should be_locked
+    end
+
+    it "resets number of retries after acquiring a lock" do
+      subject.retry(5.times)
+
+      # retries once, then returns true
+      redis_stub = redis.stubs(:setnx).returns(false).then.returns(true)
+
+      # second batch, 4 tries, returns true on 5th try
+      4.times { redis_stub = redis_stub.then.returns(false) }
+      redis_stub.then.returns(true)
+
+      expect do
+        subject.lock
+      end.to_not raise_error(RedisLock::LockNotAcquired)
+
+      subject.unlock
+
+      expect do
+        subject.lock
+      end.to_not raise_error(RedisLock::LockNotAcquired)
     end
   end
 
