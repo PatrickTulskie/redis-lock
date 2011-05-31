@@ -1,59 +1,54 @@
 require "spec_helper"
 require "redis"
 
-describe RedisLock, "#lock" do
-  let(:locking_key) { "redis-lock-locking-key" }
-  let(:redis)       { Redis.new }
-  subject           { RedisLock.new(redis, locking_key) }
+describe RedisLock do
+  let(:locking_key)         { "redis-lock-locking-key" }
+  let(:redis)               { Redis.new }
+  let(:unlocked_redis_lock) { RedisLock.new(redis, locking_key) }
+  let(:locked_redis_lock)   { unlocked_redis_lock.tap(&:lock) }
 
   before { redis.flushdb }
 
-  it "locks when a lock can be acquired" do
-    subject.should_not be_locked
-    subject.lock
-    subject.should be_locked
-  end
+  context "#lock when unlocked" do
+    subject { unlocked_redis_lock }
 
-  it "raises an exception if the lock cannot be acquired" do
-    subject.lock
-    expect do
+    it "locks when a lock can be acquired" do
+      subject.should_not be_locked
       subject.lock
-    end.to raise_error(RedisLock::LockNotAcquired,
-                       "Unable to acquire lock for key: #{locking_key}")
+      subject.should be_locked
+    end
+
   end
 
-  it "retries a set number of times" do
-    subject.lock
+  context "#lock when locked" do
+    subject { locked_redis_lock }
 
-    redis_stub = redis.stubs(:setnx).returns(false)
-    3.times { redis_stub = redis_stub.then.returns(false) }
+    it "raises an exception if the lock cannot be acquired" do
+      expect do
+        subject.lock
+      end.to raise_error(RedisLock::LockNotAcquired,
+                         "Unable to acquire lock for key: #{locking_key}")
+    end
 
-    redis_stub.then.returns(true)
+    it "retries a set number of times" do
+      locked_redis_lock
 
-    expect do
-      subject.retry(5.times).lock
-    end.to_not raise_error(RedisLock::LockNotAcquired)
+      redis_stub = redis.stubs(:setnx).returns(false)
+      3.times { redis_stub = redis_stub.then.returns(false) }
 
-    redis.should have_received(:setnx).times(5)
-    subject.should be_locked
-  end
-end
+      redis_stub.then.returns(true)
 
-describe RedisLock, "#unlock" do
-  let(:locking_key) { "redis-lock-locking-key" }
-  let(:redis)       { Redis.new }
+      expect do
+        subject.retry(5.times).lock
+      end.to_not raise_error(RedisLock::LockNotAcquired)
 
-  let(:unlocked)    { RedisLock.new(redis, locking_key) }
-  let(:locked) do
-    unlocked.tap do |lock|
-      lock.lock
+      redis.should have_received(:setnx).times(5)
+      subject.should be_locked
     end
   end
 
-  before { redis.flushdb }
-
-  context "when locked" do
-    subject { locked }
+  context "#unlock when locked" do
+    subject { locked_redis_lock }
 
     it "knows it is not locked" do
       subject.unlock
@@ -62,28 +57,25 @@ describe RedisLock, "#unlock" do
 
     it "raises an exception if it can't unlock correctly" do
       redis.del(subject.key)
-      expect { subject.unlock }.to raise_error(RedisLock::UnlockFailure, "Unable to unlock key: #{locking_key}")
+
+      expect do
+        subject.unlock
+      end.to raise_error(RedisLock::UnlockFailure, "Unable to unlock key: #{locking_key}")
     end
   end
 
-  context "when not locked" do
-    subject { unlocked }
+  context "#unlock when unlocked" do
+    subject { unlocked_redis_lock }
 
     it "knows it is not locked" do
       subject.unlock
       subject.should_not be_locked
     end
   end
-end
 
-describe RedisLock, "#lock_for_update" do
-  let(:locking_key) { "redis-lock-locking-key" }
-  let(:redis)       { Redis.new }
-  subject           { RedisLock.new(redis, locking_key) }
+  context "#lock_for_update when a lock can be acquired" do
+    subject { unlocked_redis_lock }
 
-  before { redis.flushdb }
-
-  context "when a lock can be acquired" do
     it "runs a block" do
       result = "changes within lock"
 
@@ -129,8 +121,8 @@ describe RedisLock, "#lock_for_update" do
     end
   end
 
-  context "when a lock cannot be acquired" do
-    before { subject.lock }
+  context "#lock_with_update when a lock cannot be acquired" do
+    subject { locked_redis_lock }
 
     it "does not run the block" do
       result = "doesn't change within lock"
