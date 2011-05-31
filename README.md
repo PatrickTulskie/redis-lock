@@ -1,10 +1,10 @@
-redis-lock
+redis_lock
 ==========
 
 Installation
 ------------
 
-    gem install redis-lock
+    gem install redis_lock
     require "redis_lock"
 
 Usage
