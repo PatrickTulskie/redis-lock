@@ -21,6 +21,7 @@ describe RedisLock do
 
   context "#lock when locked" do
     subject { locked_redis_lock }
+    before  { subject }
 
     it "raises an exception if the lock cannot be acquired" do
       expect do
@@ -29,17 +30,22 @@ describe RedisLock do
                          "Unable to acquire lock for key: #{locking_key}")
     end
 
+    it "sleeps for the specified amount" do
+      Kernel.stubs(:sleep)
+
+      expect do
+        subject.retry(20.times).every(2).lock
+      end.to raise_error(RedisLock::LockNotAcquired)
+
+      Kernel.should have_received(:sleep).with(2).times(20)
+    end
+
     it "retries a set number of times" do
-      locked_redis_lock
-
-      redis_stub = redis.stubs(:setnx).returns(false)
-      3.times { redis_stub = redis_stub.then.returns(false) }
-
-      redis_stub.then.returns(true)
+      redis.stubs(:setnx => false)
 
       expect do
         subject.retry(5.times).lock
-      end.to_not raise_error(RedisLock::LockNotAcquired)
+      end.to raise_error(RedisLock::LockNotAcquired)
 
       redis.should have_received(:setnx).times(5)
       subject.should be_locked
@@ -48,12 +54,8 @@ describe RedisLock do
     it "resets number of retries after acquiring a lock" do
       subject.retry(5.times)
 
-      # retries once, then returns true
-      redis_stub = redis.stubs(:setnx).returns(false).then.returns(true)
-
-      # second batch, 4 tries, returns true on 5th try
-      4.times { redis_stub = redis_stub.then.returns(false) }
-      redis_stub.then.returns(true)
+      setnx_responses = [false, false, true, false, false, false, false, true]
+      redis.stubs(:setnx).returns(*setnx_responses)
 
       expect do
         subject.lock
@@ -162,4 +164,10 @@ describe RedisLock do
       subject.should be_locked
     end
   end
+end
+
+describe RedisLock::Retry, "defaults" do
+  its(:count)    { should == 10 }
+  its(:interval) { should == 0.2 }
+  its(:attempts) { should be_zero }
 end
