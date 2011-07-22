@@ -143,7 +143,7 @@ describe RedisLock do
     end
   end
 
-  context "#lock_with_update when a lock cannot be acquired" do
+  context "#lock_for_update when a lock cannot be acquired" do
     subject { locked_redis_lock }
 
     it "does not run the block" do
