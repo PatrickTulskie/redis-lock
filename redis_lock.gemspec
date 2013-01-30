@@ -4,7 +4,7 @@ $:.push File.expand_path("../lib", __FILE__)
 require "redis_lock/version"
 
 Gem::Specification.new do |s|
-  s.name     = %q{redis_lock}
+  s.name     = %q{crowdtap_redis_lock}
   s.version  = RedisLock::VERSION
   s.email    = %q{patricktulskie@gmail.com}
   s.authors  = ["Patrick Tulskie"]
