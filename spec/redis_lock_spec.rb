@@ -30,14 +30,29 @@ describe RedisLock do
                          "Unable to acquire lock for key: #{locking_key}")
     end
 
-    it "sleeps for the specified amount" do
-      Kernel.stubs(:sleep)
 
-      expect do
-        subject.retry(20.times).every(2).lock
-      end.to raise_error(RedisLock::LockNotAcquired)
+    context 'when using a integer' do
+      it "sleeps for the specified amount" do
+        Kernel.stubs(:sleep)
 
-      Kernel.should have_received(:sleep).with(2).times(20)
+        expect do
+          subject.retry(20).every(2).lock
+        end.to raise_error(RedisLock::LockNotAcquired)
+
+        Kernel.should have_received(:sleep).with(2).times(20)
+      end
+    end
+
+    context 'when using an enumerator' do
+      it "sleeps for the specified amount" do
+        Kernel.stubs(:sleep)
+
+        expect do
+          subject.retry(20.times).every(2).lock
+        end.to raise_error(RedisLock::LockNotAcquired)
+
+        Kernel.should have_received(:sleep).with(2).times(20)
+      end
     end
 
     it "retries a set number of times" do

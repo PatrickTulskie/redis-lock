@@ -44,7 +44,11 @@ class RedisLock
   end
 
   def retry(enumerator)
-    @retry.count = enumerator.to_a.last + 1
+    if enumerator.is_a?(Numeric)
+      @retry.count = enumerator
+    else
+      @retry.count = enumerator.to_a.last + 1
+    end
     self
   end
 
