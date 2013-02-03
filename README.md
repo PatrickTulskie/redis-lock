@@ -1,41 +1,79 @@
-redis-lock
+redis_lock
 ==========
-
-Requires the redis gem.  Including this in your project will give you additional locking abilities on any instance of a redis connection you create.
 
 Installation
 ------------
-	
-	gem install redis-lock
+
+    gem install redis_lock
+    require "redis_lock"
 
 Usage
 -----
 
-	require 'redis'
-	require 'redis-lock # This will automatically include Lock into the Redis class.
+    redis = Redis.new
 
-Here's a little example of what you can do with it:
+    RedisLock.new(redis, "my-awesome-lock-key").lock_for_update do
+      this_will_only_happen_if_the_lock_is_acquired
+    end
 
-	timeout = 10 # measured in seconds
-	max_attempts = 100 # number of times the action will attempt to lock the key before raising an exception
-	
-	$redis = Redis.new
-	
-	$redis.lock('beers_on_the_wall', timeout, max_attempts)
-	# Now no one can acquire a lock on 'beers_on_the_wall'
-	
-	$redis.unlock('beers_on_the_wall')
-	# Other processes can now acquire a lock on 'beers_on_the_wall'
-	
-For convenience, there is also a `lock_with_update` function that accepts a block.  It handles the locking and unlocking for you.
+`RedisLock` defaults to 10 retries; you can override by setting the number of retries:
 
-	$redis.lock_for_update('beers_on_the_wall') do
-		$redis.multi do
-			$redis.set('sing', 'take one down, pass it around.')
-			$redis.decr('beers_on_the_wall')
-		end
-	end
-	
+    RedisLock.new(redis, "my-awesome-lock-key").retry(5.times).lock_for_update do
+      this_will_only_happen_if_the_lock_is_acquired_in_up_to_5_tries
+    end
+
+`RedisLock` will raise a `RedisLock::LockNotAcquired` exception if the lock can't be
+acquired; you'll want to handle this case in your application.
+
+    begin
+      RedisLock.new(redis, "my-awesome-lock-key").lock_for_update do
+        # lock was acquired
+      end
+    rescue RedisLock::LockNotAcquired
+      # couldn't acquire lock!
+    end
+
+Additionally, `RedisLock` will raise a `RedisLock::UnlockFailure` if the lock could
+not be removed. This could happen if the locking key got removed somehow. This
+will still execute the code within the lock_for_update call.
+
+    begin
+      RedisLock.new(redis, "my-awesome-lock-key").lock_for_update do
+        # if the lock was acquired, this will always be run
+      end
+    rescue RedisLock::UnlockFailure
+      # the lock key went away
+    end
+
+If you want to lock and unlock manually outside of the context of a block, you
+can call lock and unlock explicitly.
+
+    class SomethingAwesome
+      before_save :lock_it_up
+      after_save  :break_the_lock
+
+      private
+
+      def locker
+        @locker ||= RedisLock.new($redis, "my-awesome-lock-key")
+      end
+
+      def lock_it_up
+        begin
+          locker.lock
+        rescue RedisLock::LockNotAcquired
+          false
+        end
+      end
+
+      def break_the_lock
+        begin
+          locker.unlock
+        rescue RedisLock::UnlockFailure
+        end
+      end
+    end
+
 Additional Notes
 ----------------
 

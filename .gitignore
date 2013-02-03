@@ -1,2 +1,4 @@
 log/*
-redis-lock*.gem
+redis_lock*.gem
+Gemfile.lock
+coverage/*

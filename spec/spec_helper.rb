@@ -1,4 +1,10 @@
-require 'rubygems'
-require 'redis'
-$TESTING = true
-$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require "rubygems"
+require "bundler"
+
+Bundler.require(:development)
+
+require "redis_lock"
+
+RSpec.configure do |config|
+  config.mock_with :mocha
+end
