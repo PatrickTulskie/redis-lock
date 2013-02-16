@@ -14,8 +14,12 @@ class Redis
     
     def lock_for_update(key, timeout = 60, max_attempts = 100)
       if self.lock(key, timeout, max_attempts)
-        response = yield if block_given?
-        self.unlock(key)
+        response = nil
+        begin
+          response = yield if block_given?
+        ensure
+          self.unlock(key)
+        end
         return response
       end
     end
