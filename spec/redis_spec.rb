@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'redis-lock'
 require 'logger'
+require 'date' 
 
 describe 'redis' do
   
@@ -55,6 +56,14 @@ describe 'redis' do
   it "should unlock at the end of a lock_for_update" do
     @redis.lock_for_update('test_key', 9000) { @redis.set('test_key', 'awesome') }
     @redis.get('lock:test_key').should be_nil
+  end
+
+  it "should keep trying to lock a key" do
+    time = DateTime.now
+    @redis.lock('test_key', 9000)
+    lambda { @redis.lock('test_key', 9000, 10) }.should raise_exception("Unable to acquire lock for test_key.")
+    # Should have spent 9 seconds trying to lock
+    DateTime.now.should >= time + Rational(9, 86400)
   end
   
 end
