@@ -34,7 +34,7 @@ class Redis
       current_lock_key = lock_key(key)
       expiration_value = lock_expiration(timeout)
       attempt_counter = 0
-      begin
+      while attempt_counter < max_attempts
         if self.setnx(current_lock_key, expiration_value)
           return true
         else
@@ -44,21 +44,12 @@ class Redis
             return true if compare_value == current_lock
           end
         end
-      
-        raise RedisLockException.new("Unable to acquire lock for #{key}.")
-      rescue RedisLockException => e
-        if e.message == "Unable to acquire lock for #{key}."
-          attempt_counter += 1
-          if attempt_counter == max_attempts
-            raise
-          else
-            sleep 1
-            retry
-          end
-        else
-          raise
-        end
+
+        attempt_counter += 1
+        sleep 1 if attempt_counter < max_attempts
       end
+
+      raise RedisLockException.new("Unable to acquire lock for #{key}.")
     end
     
     # Unlock a previously locked key if it has not expired and the current process was the one that locked it.
