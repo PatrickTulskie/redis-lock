@@ -4,4 +4,4 @@ class Redis
   include Redis::Lock
 end
 
-class RedisLockException < Exception; end
+class RedisLockException < StandardError; end

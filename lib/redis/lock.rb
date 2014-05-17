@@ -46,7 +46,7 @@ class Redis
         end
       
         raise RedisLockException.new("Unable to acquire lock for #{key}.")
-      rescue Exception => e
+      rescue RedisLockException => e
         if e.message == "Unable to acquire lock for #{key}."
           attempt_counter += 1
           if attempt_counter == max_attempts
