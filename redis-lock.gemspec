@@ -11,6 +11,7 @@ Gem::Specification.new do |gem|
   gem.description   = %q{Pessimistic locking for ruby redis}
   gem.summary       = %q{Pessimistic locking for ruby redis}
   gem.homepage      = "https://github.com/PatrickTulskie/redis-lock"
+  gem.license       = "MIT"
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
