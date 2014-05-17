@@ -52,7 +52,7 @@ class Redis
       raise RedisLockException.new("Unable to acquire lock for #{key}.")
     end
     
-    # Unlock a previously locked key if it has not expired and the current process was the one that locked it.
+    # Unlock a previously locked key if it has not expired and the current process/thread was the one that locked it.
     # 
     # Example:
     # 
@@ -62,8 +62,8 @@ class Redis
       current_lock_key = lock_key(key)
       lock_value = self.get(current_lock_key)
       return true unless lock_value
-      lock_timeout, lock_holder = lock_value.split('-')
-      if (lock_timeout.to_i > Time.now.to_i) && (lock_holder.to_i == Process.pid)
+      lock_timeout, lock_process, lock_thread = lock_value.split('-')
+      if (lock_timeout.to_i > Time.now.to_i) && (lock_process.to_i == Process.pid) && lock_thread.to_i == Thread.current.object_id
         self.del(current_lock_key)
         return true
       else
@@ -74,7 +74,7 @@ class Redis
     private
   
     def lock_expiration(timeout)
-      "#{Time.now.to_i + timeout + 1}-#{Process.pid}"
+      "#{Time.now.to_i + timeout + 1}-#{Process.pid}-#{Thread.current.object_id}"
     end
   
     def lock_key(key)
