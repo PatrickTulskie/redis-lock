@@ -44,26 +44,26 @@ describe 'redis' do
   end
   
   it "should raise an exception if unable to acquire lock" do
-    @redis.lock('test_key', 9000)
-    lambda { @redis.lock('test_key', 9000, 1) }.should raise_exception("Unable to acquire lock for test_key.")
+    @redis.lock('test_key', 1000)
+    lambda { @redis.lock('test_key', 1000, 1) }.should raise_exception("Unable to acquire lock for test_key.")
   end
   
   it "should execute a block during a lock_for_update transaction" do
-    @redis.lock_for_update('test_key', 9000) { @redis.set('test_key', 'awesome') }
+    @redis.lock_for_update('test_key', 1000) { @redis.set('test_key', 'awesome') }
     @redis.get('test_key').should == 'awesome'
   end
   
   it "should unlock at the end of a lock_for_update" do
-    @redis.lock_for_update('test_key', 9000) { @redis.set('test_key', 'awesome') }
+    @redis.lock_for_update('test_key', 1000) { @redis.set('test_key', 'awesome') }
     @redis.get('lock:test_key').should be_nil
   end
 
   it "should keep trying to lock a key" do
     time = DateTime.now
-    @redis.lock('test_key', 9000)
-    lambda { @redis.lock('test_key', 9000, 10) }.should raise_exception("Unable to acquire lock for test_key.")
-    # Should have spent 9 seconds trying to lock
-    DateTime.now.should >= time + Rational(9, 86400)
+    @redis.lock('test_key', 1000)
+    lambda { @redis.lock('test_key', 1000, 2) }.should raise_exception("Unable to acquire lock for test_key.")
+    # Should have spent 1 second trying to lock
+    DateTime.now.should >= time + Rational(1, 86400)
   end
   
 end
