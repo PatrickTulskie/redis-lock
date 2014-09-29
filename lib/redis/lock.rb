@@ -4,15 +4,15 @@ class Redis
   module Lock
     
     # Lock a given key for updating
-    #
+    # 
     # Example:
-    #
+    # 
     # $redis = Redis.new
     # lock_for_update('beers_on_the_wall', 20, 1000) do
     #   $redis.decr('beers_on_the_wall')
     # end
     
-    def lock_for_update(key, timeout = 60, max_attempts = 100)
+    def lock_for_update(key, timeout = 60, max_attempts = 100, attempt_delay = 1)
       if self.lock(key, timeout, max_attempts)
         response = nil
         begin
@@ -30,7 +30,7 @@ class Redis
     # 
     # $redis.lock('beers_on_the_wall', 10, 100)
     
-    def lock(key, timeout = 60, max_attempts = 100)
+    def lock(key, timeout = 60, max_attempts = 100, attempt_delay = 1)
       current_lock_key = lock_key(key)
       expiration_value = lock_expiration(timeout)
       attempt_counter = 0
@@ -44,14 +44,14 @@ class Redis
             return true if compare_value == current_lock
           end
         end
-
+        
         attempt_counter += 1
-        sleep 1 if attempt_counter < max_attempts
+        sleep attempt_delay if attempt_counter < max_attempts
       end
-
+      
       raise RedisLockException.new("Unable to acquire lock for #{key}.")
     end
-    
+
     # Unlock a previously locked key if it has not expired and the current process/thread was the one that locked it.
     # 
     # Example:
@@ -70,16 +70,16 @@ class Redis
         return false
       end
     end
-  
+    
     private
-  
+
     def lock_expiration(timeout)
       "#{Time.now.to_i + timeout + 1}-#{Process.pid}-#{Thread.current.object_id}"
     end
-  
+    
     def lock_key(key)
       "lock:#{key}"
     end
-  
+    
   end
 end
