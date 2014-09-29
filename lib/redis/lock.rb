@@ -12,7 +12,7 @@ class Redis
     #   $redis.decr('beers_on_the_wall')
     # end
     
-    def lock_for_update(key, timeout = 60, max_attempts = 100)
+    def lock_for_update(key, timeout = 60, max_attempts = 100, attempt_delay = 1)
       if self.lock(key, timeout, max_attempts)
         response = nil
         begin
@@ -30,7 +30,7 @@ class Redis
     # 
     # $redis.lock('beers_on_the_wall', 10, 100)
     
-    def lock(key, timeout = 60, max_attempts = 100)
+    def lock(key, timeout = 60, max_attempts = 100, attempt_delay = 1)
       current_lock_key = lock_key(key)
       expiration_value = lock_expiration(timeout)
       attempt_counter = 0
@@ -46,7 +46,7 @@ class Redis
         end
 
         attempt_counter += 1
-        sleep 1 if attempt_counter < max_attempts
+        sleep attempt_delay if attempt_counter < max_attempts
       end
 
       raise RedisLockException.new("Unable to acquire lock for #{key}.")
