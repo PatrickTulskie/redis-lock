@@ -65,5 +65,16 @@ describe 'redis' do
     # Should have spent 1 second trying to lock
     DateTime.now.should >= time + Rational(1, 86400)
   end
+
+  it "should not unlock a key from another thread" do
+    @redis.lock('test_key').should be_true
+    Thread.new { @redis.unlock('test_key').should_not be_true }.join
+  end
+
+  it "should not unlock a key from another process" do
+    fork { @redis.lock('test_key'); exit 0 }
+    Process.wait2
+    @redis.unlock('test_key').should_not be_true
+  end
   
 end

@@ -39,7 +39,7 @@ class Redis
           return true
         else
           current_lock = self.get(current_lock_key)
-          if (current_lock.to_s.split('-').first.to_i) < Time.now.to_i
+          if (current_lock.to_s.split(';').first.to_i) < Time.now.to_i
             compare_value = self.getset(current_lock_key, expiration_value)
             return true if compare_value == current_lock
           end
@@ -62,7 +62,7 @@ class Redis
       current_lock_key = lock_key(key)
       lock_value = self.get(current_lock_key)
       return true unless lock_value
-      lock_timeout, lock_process, lock_thread = lock_value.split('-')
+      lock_timeout, lock_process, lock_thread = lock_value.split(';')
       if (lock_timeout.to_i > Time.now.to_i) && (lock_process.to_i == Process.pid) && lock_thread.to_i == Thread.current.object_id
         self.del(current_lock_key)
         return true
@@ -74,7 +74,7 @@ class Redis
     private
   
     def lock_expiration(timeout)
-      "#{Time.now.to_i + timeout + 1}-#{Process.pid}-#{Thread.current.object_id}"
+      "#{Time.now.to_i + timeout + 1};#{Process.pid};#{Thread.current.object_id}"
     end
   
     def lock_key(key)
